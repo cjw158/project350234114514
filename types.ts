@@ -1,16 +1,19 @@
-export enum SpiritRoot {
-  METAL = "Metal (Jin)",
-  WOOD = "Wood (Mu)",
-  WATER = "Water (Shui)",
-  FIRE = "Fire (Huo)",
-  EARTH = "Earth (Tu)",
-  HEAVENLY = "Heavenly (Tian)"
+
+export type Language = 'en' | 'zh';
+
+export interface Identity {
+  id: string;
+  nameEn: string;
+  nameZh: string;
+  descEn: string;
+  descZh: string;
 }
 
 export interface PlayerStats {
   name: string;
-  spiritRoot: SpiritRoot;
-  realm: string; // e.g., "Qi Condensation Layer 1"
+  identity: string;
+  spiritRoot: string; // AI generated now
+  realm: string;
   hp: number;
   maxHp: number;
   qi: number;
@@ -23,7 +26,7 @@ export interface PlayerStats {
 export interface Choice {
   id: string;
   text: string;
-  actionType: 'explore' | 'meditate' | 'combat' | 'talk' | 'travel';
+  actionType: 'explore' | 'meditate' | 'combat' | 'talk' | 'travel' | 'story';
 }
 
 export interface LogEntry {
@@ -40,6 +43,7 @@ export interface GameState {
   history: LogEntry[];
   currentChoices: Choice[];
   isLoading: boolean;
+  language: Language;
 }
 
 // AI Response Schema Type
@@ -49,14 +53,15 @@ export interface AIResponseData {
     hpChange?: number;
     qiChange?: number;
     goldChange?: number;
-    newRealm?: string; // If they breakthrough
+    newRealm?: string; 
     newLocation?: string;
+    setSpiritRoot?: string; // New field to set root dynamically
     inventoryAdd?: string[];
     inventoryRemove?: string[];
   };
   choices: {
     text: string;
-    actionType: string; // mapped to Choice actionType
+    actionType: string;
   }[];
   isGameOver?: boolean;
 }
