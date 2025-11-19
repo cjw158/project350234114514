@@ -9,6 +9,8 @@ export interface Identity {
   descZh: string;
 }
 
+export type StoryPhase = 'origin' | 'convergence' | 'main';
+
 export interface PlayerStats {
   name: string;
   identity: string;
@@ -21,12 +23,13 @@ export interface PlayerStats {
   gold: number;
   inventory: string[];
   location: string;
+  storyPhase: StoryPhase; // Tracks if we are in the specific origin story or main world
 }
 
 export interface Choice {
   id: string;
   text: string;
-  actionType: 'explore' | 'meditate' | 'combat' | 'talk' | 'travel' | 'story';
+  actionType: 'explore' | 'meditate' | 'combat' | 'talk' | 'travel' | 'story' | 'continue';
 }
 
 export interface LogEntry {
@@ -58,6 +61,7 @@ export interface AIResponseData {
     setSpiritRoot?: string; // New field to set root dynamically
     inventoryAdd?: string[];
     inventoryRemove?: string[];
+    setStoryPhase?: StoryPhase; // AI decides when to move to next phase
   };
   choices: {
     text: string;

@@ -11,35 +11,36 @@ const GAME_RESPONSE_SCHEMA: Schema = {
   properties: {
     narrative: {
       type: Type.STRING,
-      description: "The story segment. MUST be detailed, descriptive, and literary.",
+      description: "The story segment. STRICTLY between 100-150 words. Vivid, sensory descriptions. Do not rush the plot.",
     },
     statUpdates: {
       type: Type.OBJECT,
       description: "Changes to the player's status.",
       properties: {
-        hpChange: { type: Type.INTEGER, description: "Change in Health." },
-        qiChange: { type: Type.INTEGER, description: "Change in Qi." },
-        goldChange: { type: Type.INTEGER, description: "Change in Spirit Stones." },
-        newRealm: { type: Type.STRING, description: "New cultivation rank." },
-        newLocation: { type: Type.STRING, description: "New location name." },
-        setSpiritRoot: { type: Type.STRING, description: "Set the player's spirit root (only if not set)." },
-        inventoryAdd: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Items gained." },
-        inventoryRemove: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Items lost." },
+        hpChange: { type: Type.INTEGER },
+        qiChange: { type: Type.INTEGER },
+        goldChange: { type: Type.INTEGER },
+        newRealm: { type: Type.STRING },
+        newLocation: { type: Type.STRING },
+        setSpiritRoot: { type: Type.STRING },
+        setStoryPhase: { type: Type.STRING, enum: ['origin', 'convergence', 'main'] },
+        inventoryAdd: { type: Type.ARRAY, items: { type: Type.STRING } },
+        inventoryRemove: { type: Type.ARRAY, items: { type: Type.STRING } },
       },
     },
     choices: {
       type: Type.ARRAY,
-      description: "3 to 4 distinct choices driving the plot forward.",
+      description: "The list of choices. During narrative flow, provide EXACTLY ONE choice: 'Continue'. Only provide branching choices when a specific decision is needed.",
       items: {
         type: Type.OBJECT,
         properties: {
-          text: { type: Type.STRING, description: "The choice text." },
-          actionType: { type: Type.STRING, description: "Action category." },
+          text: { type: Type.STRING },
+          actionType: { type: Type.STRING },
         },
         required: ["text", "actionType"],
       },
     },
-    isGameOver: { type: Type.BOOLEAN, description: "True if the player dies." },
+    isGameOver: { type: Type.BOOLEAN },
   },
   required: ["narrative", "choices"],
 };
@@ -48,45 +49,46 @@ const getSystemInstruction = (lang: Language) => {
   const isZh = lang === 'zh';
   
   return `
-    You are a master novelist of Xianxia (Cultivation) literature, acting as the Game Master.
+    You are a Grandmaster of Dark Xianxia storytelling (referencing styles like 'Reverend Insanity' or 'Renegade Immortal').
     
     LANGUAGE: Output STRICTLY in ${isZh ? "Simplified Chinese (简体中文)" : "English"}.
     
-    CORE PHILOSOPHY:
-    1. **Story First:** This is not just a stat manager. It is a text adventure novel. Focus on plot, atmosphere, and character.
-    2. **Cause and Effect (Karma):** Every event must have a reason. Explain the background. Why is the player here? Who are their enemies?
-    3. **Detailed World:** The world is "The Great Desolate Nine Provinces" (洪荒九洲). It is cruel, vast, and ancient.
-    4. **Show, Don't Tell:** Don't say "You are sad." Describe the rain masking the tears on the face.
-    
-    WRITING STYLE (${isZh ? "CHINESE" : "ENGLISH"}):
-    ${isZh 
-      ? "- 风格：正统修仙网文风格。用词苍凉、大气。多用成语。描述要细腻（环境、心理、动作）。\n- 战斗：不要只说“你攻击了”。要描述功法名称、灵气光芒、空气震荡。\n- 剧情：要有起承转合。开局必须交代前因后果。" 
-      : "- Style: High Fantasy, archaic, mystical. Use terms like 'Daoist', 'Cultivator', 'Qi', 'Meridians'.\n- Combat: Visceral and flashy. Describe the techniques."}
+    **TONE & ATMOSPHERE (CRITICAL):**
+    1. **Ruthless Reality:** The world of cultivation is cruel ("The strong eat the weak"). Sentimental feelings are often fatal weaknesses. Portray the world as indifferent and dangerous.
+    2. **Karma (Cause & Effect):** Emphasize that every action has a price. Fortuitous encounters (lucky chances) often come with hidden calamities. 
+    3. **Mysterious & Esoteric:** Use Daoist terminology. Describe Qi, souls, and natural laws with a sense of ancient mystery.
+    4. **Vivid & Visceral:** Describe the metallic smell of blood, the bone-chilling cold of killing intent, or the suffocating pressure of a higher realm.
 
-    MECHANICS:
-    - If the player chooses an identity, the opening must establish their background story heavily.
-    - If 'hp' <= 0, isGameOver = true.
-    - Determine the player's 'Spirit Root' (affinity) based on their identity and luck in the first turn if not assigned.
+    **CORE NARRATIVE RULES:**
+    1. **Strict Pacing (CRITICAL):** Write in small, immersive chunks (100-150 words). NEVER output a wall of text.
+    2. **The "Continue" Rule:** 
+       - If you are describing a sequence of events, a monologue, or a transition, you MUST provide EXACTLY ONE choice: "${isZh ? "继续" : "Continue"}" (actionType: 'continue').
+       - ONLY provide branching choices (Explore/Talk/Fight) when the player explicitly needs to make a decision that changes the plot path.
+       - Do not resolve a conflict and move to the next scene in the same turn. Split it up.
+    3. **Origin Phase Pacing:** 
+       - In the 'Origin Phase', you must break the backstory into at least 4-6 segments. 
+       - Focus on the *feeling* of the tragic/mysterious origin before moving to action.
+    4. **Convergence:** ALL origins must eventually lead to **The Azure Cloud Sect (青云门)** for the Entrance Exam.
   `;
 };
 
 export const startGame = async (name: string, identity: Identity, lang: Language): Promise<AIResponseData> => {
+  const isZh = lang === 'zh';
   const prompt = `
-    BEGIN NEW NOVEL / GAME.
+    **START NEW NOVEL: CHAPTER 1**
     
-    **Character Profile:**
-    - Name: ${name}
-    - Identity/Background: ${lang === 'zh' ? identity.nameZh : identity.nameEn}
-    - Identity Description: ${lang === 'zh' ? identity.descZh : identity.descEn}
+    **Protagonist:** ${name}
+    **Identity:** ${isZh ? identity.nameZh : identity.nameEn}
+    **Identity Details:** ${isZh ? identity.descZh : identity.descEn}
     
-    **Instruction for the Opening (Chapter 1):**
-    1. **World Intro:** Briefly introduce the "Nine Provinces" or the specific region (Sect/Village/Ruins) they are in.
-    2. **The Predicament:** Start *in media res*. The character is facing a crisis, a turning point, or a moment of awakening related to their Identity.
-       - Example: If a servant, maybe they broke a treasure. If a noble, maybe their clan was just wiped out.
-    3. **The Awakening:** They realize they can cultivate, or find an item, or make a decision that changes their fate.
-    4. **Status:** Determine their Spirit Root based on the story (don't ask, just assign it via statUpdates.setSpiritRoot).
-    
-    Output the narrative and offer 3 critical choices for the first step of their path.
+    **INSTRUCTIONS:**
+    - We are in the **Origin Phase**.
+    - Write the *very first scene* (100-150 words).
+    - **TONE:** Cold, atmospheric, foreshadowing a difficult path ahead.
+    - Do NOT summarize the whole life. Start *in media res* (e.g., waking up in pain, staring at the burning village, kneeling in the snow).
+    - Describe the immediate sensory details (smell of blood, cold wind, pain).
+    - **MANDATORY:** Provide ONLY ONE choice: "${isZh ? "继续" : "Continue"}" (actionType: 'continue').
+    - Do NOT set the Spirit Root yet. Build suspense first.
   `;
 
   return callGemini(prompt, lang);
@@ -98,31 +100,61 @@ export const processTurn = async (
   recentHistory: LogEntry[],
   lang: Language
 ): Promise<AIResponseData> => {
+  const isZh = lang === 'zh';
   const historyContext = recentHistory
-    .slice(-6) // More context for better continuity
-    .map((h) => `${h.role.toUpperCase()}: ${h.text}`)
-    .join("\n");
+    .slice(-6) 
+    .map((h) => `${h.role === 'user' ? 'Action' : 'Story'}: ${h.text}`)
+    .join("\n\n");
+
+  // Convergence Logic
+  let specialInstruction = "";
+  
+  if (playerStats.storyPhase === 'origin') {
+    specialInstruction = `
+      - We are in the **Origin/Backstory**. 
+      - **PACING IS KEY:** Do NOT rush to the end of the backstory.
+      - Describe the scene in high detail. 
+      - **MANDATORY:** Provide ONLY choice "${isZh ? "继续" : "Continue"}" (actionType: 'continue') to advance the plot piece by piece.
+      - Only when the backstory is fully told (after the player has clicked continue 3-4 times), guide the player towards deciding to go to **The Azure Cloud Sect (青云门)**.
+      - Once they decide to go to the Sect (or are forced to), set 'statUpdates.setStoryPhase' to 'convergence'.
+    `;
+  } else if (playerStats.storyPhase === 'convergence') {
+    specialInstruction = `
+      - The player is traveling to the **Azure Cloud Sect**.
+      - Describe the journey or the arrival at the majestic Sect Gate.
+      - Emphasize the scale of the Sect and how insignificant the player feels.
+      - If describing the journey, use 'continue'.
+      - Once they arrive at the gate, set 'statUpdates.setStoryPhase' to 'main' and 'statUpdates.newLocation' to '${isZh ? "青云门外门" : "Azure Cloud Sect - Outer Gate"}'.
+      - This is where the main game begins.
+    `;
+  } else {
+    specialInstruction = `
+      - We are in the **Main Game**.
+      - The world is open. Allow exploration, cultivation, and sect missions.
+      - Maintain the ruthless tone. Opportunities are rare; danger is everywhere.
+    `;
+  }
 
   const prompt = `
-    **Current Status:**
-    Name: ${playerStats.name} (Identity: ${playerStats.identity})
-    Realm: ${playerStats.realm}
-    Spirit Root: ${playerStats.spiritRoot}
-    HP: ${playerStats.hp}/${playerStats.maxHp} | Qi: ${playerStats.qi}/${playerStats.maxQi}
+    **CURRENT STATUS:**
+    Name: ${playerStats.name}
+    Identity: ${playerStats.identity}
+    Phase: ${playerStats.storyPhase}
     Location: ${playerStats.location}
-    Inventory: ${playerStats.inventory.join(", ")}
+    HP: ${playerStats.hp}
     
-    **Recent Story:**
+    **RECENT NARRATIVE:**
     ${historyContext}
 
-    **Player Action:** ${playerAction}
+    **PLAYER ACTION:** ${playerAction}
     
-    **Instructions:**
-    - Continue the story naturally.
-    - If exploring, describe the environment vividly.
-    - If fighting, make it thrilling.
-    - If interacting, give NPCs personality.
-    - Update stats logically based on the narrative.
+    **INSTRUCTIONS:**
+    1. Continue the novel narrative based on the action.
+    2. **STRICT LENGTH:** 100-150 words.
+    3. ${specialInstruction}
+    4. **CRITICAL:** If the scene requires more reading (e.g. a dialogue, a fight sequence, or a long description), provide ONLY ONE choice: "${isZh ? "继续" : "Continue"}" (actionType: 'continue').
+    5. **TONE CHECK:** Ensure the description is ruthless and emphasizes the karmic consequences of this moment.
+    6. Only give branching options (Explore, Fight, Talk) if the immediate scene is finished.
   `;
 
   return callGemini(prompt, lang);
@@ -137,8 +169,8 @@ async function callGemini(prompt: string, lang: Language): Promise<AIResponseDat
         systemInstruction: getSystemInstruction(lang),
         responseMimeType: "application/json",
         responseSchema: GAME_RESPONSE_SCHEMA,
-        temperature: 0.9, // High creativity for storytelling
-        thinkingConfig: { thinkingBudget: 1024 } // Use thinking for better plot coherence
+        temperature: 1,
+        thinkingConfig: { thinkingBudget: 1024 }
       },
     });
 
@@ -150,8 +182,10 @@ async function callGemini(prompt: string, lang: Language): Promise<AIResponseDat
     console.error("GenAI Error:", error);
     const isZh = lang === 'zh';
     return {
-      narrative: isZh ? "天道紊乱，命运的长河出现了一丝波澜……（请重试）" : "The Dao is turbulent. Ripples disturb the river of fate... (Please try again)",
-      choices: [{ text: isZh ? "凝神静气 (重试)" : "Focus Qi (Retry)", actionType: "meditate" }],
+      narrative: isZh 
+        ? "天道运数晦涩难明……（API连接错误，请重试）" 
+        : "The heavenly principles are obscured... (API Error)",
+      choices: [{ text: isZh ? "重试" : "Retry", actionType: "continue" }],
       statUpdates: {},
     };
   }
