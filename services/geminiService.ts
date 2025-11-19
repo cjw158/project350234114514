@@ -20,6 +20,7 @@ const GAME_RESPONSE_SCHEMA: Schema = {
         hpChange: { type: Type.INTEGER },
         qiChange: { type: Type.INTEGER },
         goldChange: { type: Type.INTEGER },
+        karmaChange: { type: Type.INTEGER, description: "Change in Karma. Negative values for Demonic/Ruthless acts, Positive for Righteous/Merciful acts." },
         newRealm: { type: Type.STRING },
         newLocation: { type: Type.STRING },
         setSpiritRoot: { type: Type.STRING },
@@ -59,6 +60,13 @@ const getSystemInstruction = (lang: Language) => {
     3. **Mysterious & Esoteric:** Use Daoist terminology. Describe Qi, souls, and natural laws with a sense of ancient mystery.
     4. **Vivid & Visceral:** Describe the metallic smell of blood, the bone-chilling cold of killing intent, or the suffocating pressure of a higher realm.
 
+    **GAME MECHANICS - KARMA:**
+    - You must manage a hidden **Karma** stat (-100 to 100).
+    - **Negative Karma (Demonic):** Ruthless killing, stealing, refining souls, selfish survival. Visually represented by black/purple energy.
+    - **Positive Karma (Righteous):** Saving others, upholding justice, mercy. Visually represented by golden/white energy.
+    - **Neutral (0):** The balance.
+    - Use 'statUpdates.karmaChange' to adjust this based on player choices (e.g., -5 for killing a beggar, +5 for saving them).
+
     **CORE NARRATIVE RULES:**
     1. **Strict Pacing (CRITICAL):** Write in small, immersive chunks (100-150 words). NEVER output a wall of text.
     2. **The "Continue" Rule:** 
@@ -89,6 +97,7 @@ export const startGame = async (name: string, identity: Identity, lang: Language
     - Describe the immediate sensory details (smell of blood, cold wind, pain).
     - **MANDATORY:** Provide ONLY ONE choice: "${isZh ? "继续" : "Continue"}" (actionType: 'continue').
     - Do NOT set the Spirit Root yet. Build suspense first.
+    - Karma starts at 0.
   `;
 
   return callGemini(prompt, lang);
@@ -132,6 +141,7 @@ export const processTurn = async (
       - We are in the **Main Game**.
       - The world is open. Allow exploration, cultivation, and sect missions.
       - Maintain the ruthless tone. Opportunities are rare; danger is everywhere.
+      - Evaluate the player's action for Karma adjustments. Ruthlessness = Negative Karma. Mercy = Positive Karma.
     `;
   }
 
@@ -142,6 +152,7 @@ export const processTurn = async (
     Phase: ${playerStats.storyPhase}
     Location: ${playerStats.location}
     HP: ${playerStats.hp}
+    Karma: ${playerStats.karma}
     
     **RECENT NARRATIVE:**
     ${historyContext}

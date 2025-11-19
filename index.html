@@ -6,25 +6,77 @@
     <title>Xianxia Chronicles</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;600;700&family=Cinzel:wght@400;700&display=swap');
+      
+      :root {
+        --c-bg-dark: #0c0a09;
+        --c-accent: #d97706;
+        --c-text-main: #e7e5e4;
+        --c-text-mute: #a8a29e;
+      }
+
       body {
         font-family: 'Noto Serif SC', serif;
-        background-color: #1c1917; /* stone-900 */
-        color: #e7e5e4; /* stone-200 */
+        background-color: var(--c-bg-dark);
+        color: var(--c-text-main);
+        overflow: hidden; /* App handles scrolling */
       }
-      /* Custom Scrollbar for that ancient scroll feel */
-      ::-webkit-scrollbar {
-        width: 8px;
+
+      /* Cinematic Background */
+      .qi-bg {
+        background: radial-gradient(circle at 50% 50%, #1c1917 0%, #000000 100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
       }
-      ::-webkit-scrollbar-track {
-        background: #292524; 
+      
+      .qi-mist {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        animation: mist-move 60s linear infinite;
+        opacity: 0.4;
+        pointer-events: none;
       }
-      ::-webkit-scrollbar-thumb {
-        background: #57534e; 
-        border-radius: 4px;
+
+      @keyframes mist-move {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #78716c; 
+
+      /* Modern Scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(217, 119, 6, 0.3); 
+        border-radius: 2px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(217, 119, 6, 0.6); 
+      }
+
+      /* Utility for English Headers */
+      .font-cinzel {
+        font-family: 'Cinzel', serif;
+      }
+
+      /* Glassmorphism Utilities */
+      .glass-panel {
+        background: rgba(12, 10, 9, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
       }
     </style>
   <script type="importmap">
@@ -40,6 +92,9 @@
 </script>
 </head>
   <body>
+    <div class="qi-bg">
+      <div class="qi-mist"></div>
+    </div>
     <div id="root"></div>
   </body>
 </html>

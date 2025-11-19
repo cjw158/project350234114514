@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { LogEntry, Language } from '../types';
 
@@ -18,32 +17,35 @@ const GameLog: React.FC<GameLogProps> = ({ history, isLoading, language }) => {
   }, [history, isLoading]);
 
   const labels = {
-    user: language === 'zh' ? '你' : 'You',
+    user: language === 'zh' ? '此心' : 'Heart',
     ai: language === 'zh' ? '天道' : 'The Dao',
-    loading: language === 'zh' ? '天机推演中...' : 'Consulting the Heavens...'
+    loading: language === 'zh' ? '天机演化...' : 'The Dao unfolds...'
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 custom-scrollbar scroll-smooth">
-      <div className="max-w-3xl mx-auto space-y-4 md:space-y-6 pt-4 pb-8">
+    <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar relative z-10">
+      <div className="max-w-3xl mx-auto pt-4 pb-12">
         {history.map((entry) => (
           <div 
             key={entry.id} 
             className={`
-              p-3 md:p-4 rounded-lg border 
-              ${entry.role === 'user' 
-                ? 'bg-stone-900/50 border-stone-700 ml-4 md:ml-12 text-right' 
-                : 'bg-black/20 border-stone-800 mr-4 md:mr-12 text-left shadow-lg'}
+              flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700
+              ${entry.role === 'user' ? 'items-end' : 'items-start'}
             `}
           >
-            <div className="text-[10px] text-stone-500 mb-1 uppercase tracking-widest">
-              {entry.role === 'user' ? labels.user : labels.ai}
+            <div className="flex items-center gap-2 mb-1 opacity-50">
+              {entry.role === 'ai' && <div className="w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_5px_orange]" />}
+              <span className="text-[10px] uppercase tracking-widest font-serif text-stone-400">
+                {entry.role === 'user' ? labels.user : labels.ai}
+              </span>
+              {entry.role === 'user' && <div className="w-1 h-1 rounded-full bg-stone-500" />}
             </div>
+            
             <div className={`
-              leading-relaxed whitespace-pre-wrap
+              max-w-[95%] md:max-w-[85%] leading-loose text-lg md:text-xl
               ${entry.role === 'user' 
-                ? 'text-stone-300 italic text-base md:text-lg' 
-                : 'text-stone-200 font-serif text-base md:text-lg'}
+                ? 'text-stone-400 italic font-serif text-right' 
+                : 'text-stone-200 font-serif text-justify drop-shadow-md'}
             `}>
               {entry.text}
             </div>
@@ -51,11 +53,14 @@ const GameLog: React.FC<GameLogProps> = ({ history, isLoading, language }) => {
         ))}
         
         {isLoading && (
-          <div className="flex justify-center items-center p-6 md:p-8 animate-pulse">
-            <div className="text-amber-700 font-serif tracking-widest text-xs md:text-sm">{labels.loading}</div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-80">
+            <div className="w-12 h-12 border-2 border-stone-800 border-t-amber-600 rounded-full animate-spin"></div>
+            <div className="text-amber-700/80 font-serif text-xs tracking-[0.3em] animate-pulse">
+              {labels.loading}
+            </div>
           </div>
         )}
-        <div ref={bottomRef} className="h-2" />
+        <div ref={bottomRef} className="h-8" />
       </div>
     </div>
   );

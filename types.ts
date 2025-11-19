@@ -21,6 +21,7 @@ export interface PlayerStats {
   qi: number;
   maxQi: number;
   gold: number;
+  karma: number; // -100 (Demonic) to 100 (Righteous)
   inventory: string[];
   location: string;
   storyPhase: StoryPhase; // Tracks if we are in the specific origin story or main world
@@ -56,6 +57,7 @@ export interface AIResponseData {
     hpChange?: number;
     qiChange?: number;
     goldChange?: number;
+    karmaChange?: number;
     newRealm?: string; 
     newLocation?: string;
     setSpiritRoot?: string; // New field to set root dynamically
