@@ -111,17 +111,17 @@ export const processTurn = async (
 ): Promise<AIResponseData> => {
   const isZh = lang === 'zh';
   
-  // Optimize history context generation
+  // Optimize history context generation using array join
   const historyLength = recentHistory.length;
   const startIdx = Math.max(0, historyLength - 6);
-  let historyContext = '';
+  const contextParts: string[] = [];
   
   for (let i = startIdx; i < historyLength; i++) {
     const h = recentHistory[i];
-    historyContext += (i > startIdx ? '\n\n' : '') + 
-                      (h.role === 'user' ? 'Action' : 'Story') + 
-                      ': ' + h.text;
+    contextParts.push((h.role === 'user' ? 'Action' : 'Story') + ': ' + h.text);
   }
+  
+  const historyContext = contextParts.join('\n\n');
 
   // Convergence Logic
   let specialInstruction = "";

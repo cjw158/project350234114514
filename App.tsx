@@ -183,51 +183,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleStartGame = async () => {
-    if (!setupData.name || !setupData.identity) return;
-    localStorage.removeItem(SAVE_KEY);
-    setGameState(prev => ({ ...prev, isLoading: true, language }));
-    setStep('game');
-
-    try {
-      const aiData = await startGame(setupData.name, setupData.identity, language);
-      const initialPlayer: PlayerStats = {
-        ...INITIAL_STATS,
-        name: setupData.name,
-        identity: language === 'zh' ? setupData.identity.nameZh : setupData.identity.nameEn,
-        location: aiData.statUpdates?.newLocation || (language === 'zh' ? "尘世" : "Mortal World"),
-        storyPhase: 'origin'
-      };
-      updateGameStateFromAI(aiData, initialPlayer, true);
-    } catch (e) {
-      setGameState(prev => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  const handleAction = useCallback(async (choice: Choice) => {
-    if (gameState.isLoading || gameState.isGameOver) return;
-    const userLog: LogEntry = {
-      id: uuidv4(),
-      role: 'user',
-      text: choice.actionType === 'continue' ? (language === 'zh' ? '（继续）' : '(Continue)') : choice.text,
-      timestamp: Date.now()
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      history: [...prev.history, userLog],
-      isLoading: true,
-      currentChoices: [] 
-    }));
-
-    try {
-      const aiData = await processTurn(choice.text, gameState.player, gameState.history, language);
-      updateGameStateFromAI(aiData, gameState.player);
-    } catch (e) {
-      setGameState(prev => ({ ...prev, isLoading: false }));
-    }
-  }, [gameState.isLoading, gameState.isGameOver, gameState.player, gameState.history, language]);
-
   const updateGameStateFromAI = useCallback((data: AIResponseData, currentPlayer: PlayerStats, isInit = false) => {
     const updates = data.statUpdates || {};
     const newPlayer = { ...currentPlayer };
@@ -263,6 +218,57 @@ const App: React.FC = () => {
       turn: prev.turn + 1
     }));
   }, []);
+
+  const handleStartGame = async () => {
+    if (!setupData.name || !setupData.identity) return;
+    localStorage.removeItem(SAVE_KEY);
+    setGameState(prev => ({ ...prev, isLoading: true, language }));
+    setStep('game');
+
+    try {
+      const aiData = await startGame(setupData.name, setupData.identity, language);
+      const initialPlayer: PlayerStats = {
+        ...INITIAL_STATS,
+        name: setupData.name,
+        identity: language === 'zh' ? setupData.identity.nameZh : setupData.identity.nameEn,
+        location: aiData.statUpdates?.newLocation || (language === 'zh' ? "尘世" : "Mortal World"),
+        storyPhase: 'origin'
+      };
+      updateGameStateFromAI(aiData, initialPlayer, true);
+    } catch (e) {
+      setGameState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleAction = useCallback(async (choice: Choice) => {
+    // Capture current values to avoid stale closures
+    setGameState(prev => {
+      if (prev.isLoading || prev.isGameOver) return prev;
+      
+      const userLog: LogEntry = {
+        id: uuidv4(),
+        role: 'user',
+        text: choice.actionType === 'continue' ? (language === 'zh' ? '（继续）' : '(Continue)') : choice.text,
+        timestamp: Date.now()
+      };
+
+      const newHistory = [...prev.history, userLog];
+      
+      // Trigger async API call
+      processTurn(choice.text, prev.player, newHistory, language)
+        .then(aiData => updateGameStateFromAI(aiData, prev.player))
+        .catch(() => {
+          setGameState(current => ({ ...current, isLoading: false }));
+        });
+
+      return {
+        ...prev,
+        history: newHistory,
+        isLoading: true,
+        currentChoices: [] 
+      };
+    });
+  }, [language, updateGameStateFromAI]);
 
   // --- Renders ---
 

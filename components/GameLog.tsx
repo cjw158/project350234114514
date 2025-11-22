@@ -12,23 +12,33 @@ const GameLog: React.FC<GameLogProps> = React.memo(({ history, isLoading, langua
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounce scroll operations to reduce DOM manipulation
+  // Track last history item to detect actual changes
+  const lastHistoryItemRef = useRef<LogEntry | null>(null);
+  
   useEffect(() => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
+    const lastItem = history[history.length - 1];
+    const shouldScroll = lastItem && lastItem !== lastHistoryItemRef.current;
     
-    scrollTimeoutRef.current = setTimeout(() => {
-      if (bottomRef.current) {
-        bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (shouldScroll || isLoading) {
+      lastHistoryItemRef.current = lastItem;
+      
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
-    }, 100);
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (bottomRef.current) {
+          bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
     
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [history.length, isLoading]);
+  }, [history, isLoading]);
 
   // Memoize labels to prevent recreation on every render
   const labels = useMemo(() => ({
