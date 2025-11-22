@@ -241,7 +241,10 @@ const App: React.FC = () => {
   };
 
   const handleAction = useCallback(async (choice: Choice) => {
-    // Capture current values to avoid stale closures
+    // Capture current state values
+    let currentPlayer: PlayerStats;
+    let newHistory: LogEntry[];
+    
     setGameState(prev => {
       if (prev.isLoading || prev.isGameOver) return prev;
       
@@ -252,14 +255,8 @@ const App: React.FC = () => {
         timestamp: Date.now()
       };
 
-      const newHistory = [...prev.history, userLog];
-      
-      // Trigger async API call
-      processTurn(choice.text, prev.player, newHistory, language)
-        .then(aiData => updateGameStateFromAI(aiData, prev.player))
-        .catch(() => {
-          setGameState(current => ({ ...current, isLoading: false }));
-        });
+      currentPlayer = prev.player;
+      newHistory = [...prev.history, userLog];
 
       return {
         ...prev,
@@ -268,6 +265,14 @@ const App: React.FC = () => {
         currentChoices: [] 
       };
     });
+    
+    // Execute async operation with captured state
+    try {
+      const aiData = await processTurn(choice.text, currentPlayer!, newHistory!, language);
+      updateGameStateFromAI(aiData, currentPlayer!);
+    } catch (e) {
+      setGameState(current => ({ ...current, isLoading: false }));
+    }
   }, [language, updateGameStateFromAI]);
 
   // --- Renders ---
