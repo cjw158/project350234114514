@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { PlayerStats, GameState, LogEntry, AIResponseData, Choice, Language, Identity } from './types';
 import { startGame, processTurn } from './services/geminiService';
@@ -6,6 +6,7 @@ import GameLog from './components/GameLog';
 import { Button, GlassPanel, TabSystem, ProgressBar, KarmaBar, StatRow, Divider, Badge } from './components/UIComponents';
 
 // --- Game Data & Translations ---
+// Moved outside component to prevent recreation on every render
 
 const IDENTITIES: Identity[] = [
   {
@@ -149,10 +150,27 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Debounce localStorage saves to reduce expensive operations
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
     if (step === 'game' && gameState.turn > 0 && !gameState.isLoading && !gameState.isGameOver) {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+      // Clear any pending save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Debounce save for 500ms
+      saveTimeoutRef.current = setTimeout(() => {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+      }, 500);
     }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [gameState, step]);
 
   const handleLoadGame = () => {
@@ -164,6 +182,42 @@ const App: React.FC = () => {
       setStep('game');
     }
   };
+
+  const updateGameStateFromAI = useCallback((data: AIResponseData, currentPlayer: PlayerStats, isInit = false) => {
+    const updates = data.statUpdates || {};
+    const newPlayer = { ...currentPlayer };
+
+    if (updates.hpChange) newPlayer.hp = Math.min(newPlayer.maxHp, Math.max(0, newPlayer.hp + updates.hpChange));
+    if (updates.qiChange) newPlayer.qi = Math.min(newPlayer.maxQi, Math.max(0, newPlayer.qi + updates.qiChange));
+    if (updates.goldChange) newPlayer.gold = Math.max(0, newPlayer.gold + updates.goldChange);
+    if (updates.karmaChange) newPlayer.karma = Math.max(-100, Math.min(100, newPlayer.karma + updates.karmaChange));
+    if (updates.newRealm) newPlayer.realm = updates.newRealm;
+    if (updates.newLocation) newPlayer.location = updates.newLocation;
+    if (updates.setSpiritRoot) newPlayer.spiritRoot = updates.setSpiritRoot;
+    if (updates.setStoryPhase) newPlayer.storyPhase = updates.setStoryPhase as any;
+    
+    // Optimize inventory operations
+    if (updates.inventoryAdd) {
+      newPlayer.inventory = newPlayer.inventory.concat(updates.inventoryAdd);
+    }
+    if (updates.inventoryRemove) {
+      const removeSet = new Set(updates.inventoryRemove);
+      newPlayer.inventory = newPlayer.inventory.filter(item => !removeSet.has(item));
+    }
+
+    const aiLog: LogEntry = { id: uuidv4(), role: 'ai', text: data.narrative, timestamp: Date.now() };
+    const newChoices: Choice[] = data.choices.map(c => ({ id: uuidv4(), text: c.text, actionType: c.actionType as any }));
+
+    setGameState(prev => ({
+      ...prev,
+      player: newPlayer,
+      history: isInit ? [aiLog] : [...prev.history, aiLog],
+      currentChoices: newChoices,
+      isGameOver: data.isGameOver || newPlayer.hp <= 0,
+      isLoading: false,
+      turn: prev.turn + 1
+    }));
+  }, []);
 
   const handleStartGame = async () => {
     if (!setupData.name || !setupData.identity) return;
@@ -186,55 +240,40 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAction = async (choice: Choice) => {
-    if (gameState.isLoading || gameState.isGameOver) return;
-    const userLog: LogEntry = {
-      id: uuidv4(),
-      role: 'user',
-      text: choice.actionType === 'continue' ? (language === 'zh' ? '（继续）' : '(Continue)') : choice.text,
-      timestamp: Date.now()
-    };
+  const handleAction = useCallback(async (choice: Choice) => {
+    // Capture current state values
+    let currentPlayer: PlayerStats;
+    let newHistory: LogEntry[];
+    
+    setGameState(prev => {
+      if (prev.isLoading || prev.isGameOver) return prev;
+      
+      const userLog: LogEntry = {
+        id: uuidv4(),
+        role: 'user',
+        text: choice.actionType === 'continue' ? (language === 'zh' ? '（继续）' : '(Continue)') : choice.text,
+        timestamp: Date.now()
+      };
 
-    setGameState(prev => ({
-      ...prev,
-      history: [...prev.history, userLog],
-      isLoading: true,
-      currentChoices: [] 
-    }));
+      currentPlayer = prev.player;
+      newHistory = [...prev.history, userLog];
 
+      return {
+        ...prev,
+        history: newHistory,
+        isLoading: true,
+        currentChoices: [] 
+      };
+    });
+    
+    // Execute async operation with captured state
     try {
-      const aiData = await processTurn(choice.text, gameState.player, gameState.history, language);
-      updateGameStateFromAI(aiData, gameState.player);
+      const aiData = await processTurn(choice.text, currentPlayer!, newHistory!, language);
+      updateGameStateFromAI(aiData, currentPlayer!);
     } catch (e) {
-      setGameState(prev => ({ ...prev, isLoading: false }));
+      setGameState(current => ({ ...current, isLoading: false }));
     }
-  };
-
-  const updateGameStateFromAI = (data: AIResponseData, currentPlayer: PlayerStats, isInit = false) => {
-    const updates = data.statUpdates || {};
-    const newPlayer = { ...currentPlayer };
-
-    if (updates.hpChange) newPlayer.hp = Math.min(newPlayer.maxHp, Math.max(0, newPlayer.hp + updates.hpChange));
-    if (updates.qiChange) newPlayer.qi = Math.min(newPlayer.maxQi, Math.max(0, newPlayer.qi + updates.qiChange));
-    if (updates.goldChange) newPlayer.gold = Math.max(0, newPlayer.gold + updates.goldChange);
-    if (updates.karmaChange) newPlayer.karma = Math.max(-100, Math.min(100, newPlayer.karma + updates.karmaChange));
-    if (updates.newRealm) newPlayer.realm = updates.newRealm;
-    if (updates.newLocation) newPlayer.location = updates.newLocation;
-    if (updates.setSpiritRoot) newPlayer.spiritRoot = updates.setSpiritRoot;
-    if (updates.setStoryPhase) newPlayer.storyPhase = updates.setStoryPhase as any;
-    if (updates.inventoryAdd) newPlayer.inventory = [...newPlayer.inventory, ...updates.inventoryAdd];
-    if (updates.inventoryRemove) newPlayer.inventory = newPlayer.inventory.filter(item => !updates.inventoryRemove!.includes(item));
-
-    setGameState(prev => ({
-      ...prev,
-      player: newPlayer,
-      history: isInit ? [{ id: uuidv4(), role: 'ai', text: data.narrative, timestamp: Date.now() }] : [...prev.history, { id: uuidv4(), role: 'ai', text: data.narrative, timestamp: Date.now() }],
-      currentChoices: data.choices.map(c => ({ id: uuidv4(), text: c.text, actionType: c.actionType as any })),
-      isGameOver: data.isGameOver || newPlayer.hp <= 0,
-      isLoading: false,
-      turn: prev.turn + 1
-    }));
-  };
+  }, [language, updateGameStateFromAI]);
 
   // --- Renders ---
 

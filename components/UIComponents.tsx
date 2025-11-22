@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 // --- Core Layout Components ---
 
-export const GlassPanel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => {
+export const GlassPanel: React.FC<{ children: React.ReactNode; className?: string }> = React.memo(({ children, className = '' }) => {
   return (
     <div className={`glass-panel rounded-xl overflow-hidden ${className}`}>
       {children}
     </div>
   );
-};
+});
 
 export const TabSystem: React.FC<{ 
   tabs: { id: string; label: string; icon?: React.ReactNode }[]; 
@@ -75,7 +75,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 // --- Data Display ---
 
-export const StatRow: React.FC<{ label: string; value: string | number; subtext?: string }> = ({ label, value, subtext }) => (
+export const StatRow: React.FC<{ label: string; value: string | number; subtext?: string }> = React.memo(({ label, value, subtext }) => (
   <div className="flex justify-between items-center py-2 border-b border-stone-800/50 last:border-0">
     <span className="text-stone-500 text-xs uppercase tracking-wider">{label}</span>
     <div className="text-right">
@@ -83,10 +83,10 @@ export const StatRow: React.FC<{ label: string; value: string | number; subtext?
       {subtext && <div className="text-[10px] text-stone-600">{subtext}</div>}
     </div>
   </div>
-);
+));
 
-export const ProgressBar: React.FC<{ value: number; max: number; color: string; label: string; icon?: string }> = ({ value, max, color, label, icon }) => {
-  const percentage = Math.max(0, Math.min(100, (value / max) * 100));
+export const ProgressBar: React.FC<{ value: number; max: number; color: string; label: string; icon?: string }> = React.memo(({ value, max, color, label, icon }) => {
+  const percentage = useMemo(() => Math.max(0, Math.min(100, (value / max) * 100)), [value, max]);
   
   return (
     <div className="w-full mb-4 group">
@@ -105,18 +105,18 @@ export const ProgressBar: React.FC<{ value: number; max: number; color: string; 
       </div>
     </div>
   );
-};
+});
 
-export const KarmaBar: React.FC<{ karma: number; label: string; minLabel: string; maxLabel: string }> = ({ karma, label, minLabel, maxLabel }) => {
-  const clamped = Math.max(-100, Math.min(100, karma));
-  const percentage = Math.abs(clamped) / 2; // Max width 50% of container
+// Memoize gradient strings to prevent recreation
+const SWIRLING_DARK = 'linear-gradient(45deg, #312e81, #000000, #4c1d95)';
+const SWIRLING_LIGHT = 'linear-gradient(45deg, #d97706, #fef3c7, #b45309)';
+
+export const KarmaBar: React.FC<{ karma: number; label: string; minLabel: string; maxLabel: string }> = React.memo(({ karma, label, minLabel, maxLabel }) => {
+  const clamped = useMemo(() => Math.max(-100, Math.min(100, karma)), [karma]);
+  const percentage = useMemo(() => Math.abs(clamped) / 2, [clamped]);
   
   const isEvil = clamped < 0;
   const isGood = clamped > 0;
-
-  // Dynamic styles for the swirling effect
-  const swirlingDark = `linear-gradient(45deg, #312e81, #000000, #4c1d95)`;
-  const swirlingLight = `linear-gradient(45deg, #d97706, #fef3c7, #b45309)`;
 
   return (
     <div className="w-full mb-4">
@@ -138,7 +138,7 @@ export const KarmaBar: React.FC<{ karma: number; label: string; minLabel: string
           }`}
           style={{ 
             width: `${percentage}%`,
-            background: isEvil ? swirlingDark : isGood ? swirlingLight : 'none',
+            background: isEvil ? SWIRLING_DARK : isGood ? SWIRLING_LIGHT : 'none',
             boxShadow: isEvil ? '0 0 15px rgba(76, 29, 149, 0.5)' : isGood ? '0 0 15px rgba(217, 119, 6, 0.5)' : 'none',
             opacity: karma === 0 ? 0 : 1
           }}
@@ -149,15 +149,15 @@ export const KarmaBar: React.FC<{ karma: number; label: string; minLabel: string
       </div>
     </div>
   );
-};
+});
 
-export const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const Badge: React.FC<{ children: React.ReactNode }> = React.memo(({ children }) => (
   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-800 text-stone-300 border border-stone-700">
     {children}
   </span>
-);
+));
 
-export const Divider: React.FC<{ label?: string }> = ({ label }) => (
+export const Divider: React.FC<{ label?: string }> = React.memo(({ label }) => (
   <div className="relative flex items-center my-6">
     <div className="flex-grow h-px bg-gradient-to-r from-transparent via-stone-700 to-transparent"></div>
     {label && (
@@ -167,4 +167,4 @@ export const Divider: React.FC<{ label?: string }> = ({ label }) => (
     )}
     <div className="flex-grow h-px bg-gradient-to-r from-transparent via-stone-700 to-transparent"></div>
   </div>
-);
+));

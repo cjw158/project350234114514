@@ -110,10 +110,12 @@ export const processTurn = async (
   lang: Language
 ): Promise<AIResponseData> => {
   const isZh = lang === 'zh';
+  
+  // Optimize history context generation - take last 6 entries
   const historyContext = recentHistory
-    .slice(-6) 
+    .slice(-6)
     .map((h) => `${h.role === 'user' ? 'Action' : 'Story'}: ${h.text}`)
-    .join("\n\n");
+    .join('\n\n');
 
   // Convergence Logic
   let specialInstruction = "";

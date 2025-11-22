@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { LogEntry, Language } from '../types';
 
 interface GameLogProps {
@@ -7,20 +7,45 @@ interface GameLogProps {
   language: Language;
 }
 
-const GameLog: React.FC<GameLogProps> = ({ history, isLoading, language }) => {
+const GameLog: React.FC<GameLogProps> = React.memo(({ history, isLoading, language }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debounce scroll operations to reduce DOM manipulation
+  // Track last history item to detect actual changes
+  const lastHistoryItemRef = useRef<LogEntry | null>(null);
+  
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    const lastItem = history[history.length - 1];
+    const shouldScroll = lastItem && lastItem !== lastHistoryItemRef.current;
+    
+    if (shouldScroll || isLoading) {
+      lastHistoryItemRef.current = lastItem;
+      
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (bottomRef.current) {
+          bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
     }
+    
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, [history, isLoading]);
 
-  const labels = {
+  // Memoize labels to prevent recreation on every render
+  const labels = useMemo(() => ({
     user: language === 'zh' ? '此心' : 'Heart',
     ai: language === 'zh' ? '天道' : 'The Dao',
     loading: language === 'zh' ? '天机演化...' : 'The Dao unfolds...'
-  };
+  }), [language]);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar relative z-10">
@@ -64,6 +89,6 @@ const GameLog: React.FC<GameLogProps> = ({ history, isLoading, language }) => {
       </div>
     </div>
   );
-};
+});
 
 export default GameLog;
